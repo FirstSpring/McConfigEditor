@@ -8,11 +8,12 @@ try:
 except AttributeError:
     _fromUtf8 = lambda s: s
 
-CONFIG_DIR = r'.\config'
+CONFIG_DIR = r'..\config'
 
 class Ui_MainWindow(object):
-    def __init__(self):
+    def __init__(self, configDir):
         self.dataChanged = False
+        self.configDir = configDir
 
     def tableUpdate(self, cfg):
         self.tableWidget_edit.clear()
@@ -43,10 +44,10 @@ class Ui_MainWindow(object):
         self.pushButton_overwrite.setEnabled(False)
 
     def reload(self):
-        self.configs = loadconfig()
+        configs = loadconfig(self.configDir)
         self.listWidget_list.clear()
-        for config in self.configs:
-            self.listWidget_list.addItem(config.name)
+        for config in configs:
+            self.listWidget_list.addItem(config)
 
     def selectconfig(self):
         name = self.listWidget_list.currentItem().text()
@@ -57,7 +58,7 @@ class Ui_MainWindow(object):
                     QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel
                     ) == QtGui.QMessageBox.Cancel:
                     return
-        cfg = config.Config(name)
+        cfg = config.Config(self.configDir, name)
         self.selectedConfig = cfg
         cfg.readFile()
         self.tableUpdate(cfg)
@@ -160,13 +161,18 @@ class Ui_MainWindow(object):
         self.menu_file.setTitle(QtGui.QApplication.translate("MainWindow", "ファイル", None, QtGui.QApplication.UnicodeUTF8))
         self.action_exit.setText(QtGui.QApplication.translate("MainWindow", "終了", None, QtGui.QApplication.UnicodeUTF8))
 
-def loadconfig():
+def loadconfig(configDir):
     import os
-    files = os.listdir(CONFIG_DIR)
+    try:
+        files = os.listdir(configDir)
+    except:
+        QtGui.QMessageBox.warning(None, 'Error',
+        'configフォルダがありませんでした\nアプリケーションを終了します')
+        sys.exit()
     configs = []
     for file in files:
         if isMLProp(file):
-            configs.append(config.Config(file))
+            configs.append(file)
     return configs
 
 def isMLProp(file):
@@ -174,12 +180,13 @@ def isMLProp(file):
     engine = re.compile('^(mod_).*(.cfg)')
     return engine.match(file)
 
-
-import sys
-app = QtGui.QApplication(sys.argv)
-MainWindow = QtGui.QMainWindow()
-ui = Ui_MainWindow()
-ui.setupUi(MainWindow)
-MainWindow.show()
-app.exec_()
+if __name__ == '__main__':
+    import sys
+    print(sys.argv)
+    app = QtGui.QApplication(sys.argv)
+    MainWindow = QtGui.QMainWindow()
+    ui = Ui_MainWindow(sys.argv[1] if len(sys.argv) > 1 else CONFIG_DIR)
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())
 

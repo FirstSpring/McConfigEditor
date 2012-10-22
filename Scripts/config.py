@@ -45,16 +45,19 @@ class Item(object):
 
 
 class Config(object):
-    def __init__(self, name):
+    def __init__(self, configDir, name):
+        self.configDir = configDir
         self.name = name
         self.items = {}
 
     def readFile(self):
         commentLines = []
         itemLines = []
-        with open(main.CONFIG_DIR + '\\' + self.name) as file:
+        with open(self.configDir + '\\' + self.name) as file:
             for line in file:
-                if line.startswith('#'):
+                if line.isspace():
+                    pass
+                elif line.startswith('#'):
                     commentLines.append(line)
                 else:
                     itemLines.append(line)
@@ -62,16 +65,16 @@ class Config(object):
             item = Item(self.name, itemLine.split('=')[0], itemLine.split('=')[1])
             for commentLine in commentLines:
                 if commentLine.find(item.name) > -1:
-                    commentLine = commentLine.replace('#MLProp : ', '')
+                    commentLine = commentLine.replace('MLProp : ', '')
                     import re
-                    pattern = r'^(?P<name>.+) [(](?P<type>.+?):(?P<detail>.*?)[)](?: -- )?(?P<info>.*)$'
+                    pattern = r'^#[ ]*(?P<name>.+)[ ]*[(](?P<type>.+?):(?P<detail>.*?)[)](?: -- )?(?P<info>.*)$'
                     p = re.compile(pattern)
                     m = p.search(commentLine)
                     if m:
-                        type_ = m.group('type')
+                        type_ = m.group('type').lower()
                         detail = m.group('detail')
                         info = m.group('info')
-                        if type_ == 'java.lang.String':
+                        if type_.count('string'):
                             item.setType('string')
                             item.setDefaultValue(detail)
                         else:
@@ -84,12 +87,12 @@ class Config(object):
                                 if data.count('<='):
                                     item.setMax(data.replace('<=', ''))
                         item.setInfo(info)
-                        self.items[item.name] = item
+            self.items[item.name] = item
 
     def writeFile(self):
         import tempfile, os, shutil
         tmpfd,tmpname = tempfile.mkstemp(dir = '.')
-        with open(main.CONFIG_DIR + '\\' + self.name) as input, os.fdopen(tmpfd, 'w') as output:
+        with open(self.configDir + '\\' + self.name) as input, os.fdopen(tmpfd, 'w') as output:
             lines = input.readlines()
             for line in lines:
                 if not line.startswith('#'):
@@ -97,10 +100,9 @@ class Config(object):
                         if line.find(item.name) > -1:
                             newline = item.name + '=' + item.value
                             if line != newline:
-                                print('new')
                                 line = newline + '\n'
                 output.write(line)
-        shutil.copyfile(tmpname, main.CONFIG_DIR + '\\' + self.name)
+        shutil.copyfile(tmpname, self.configDir + '\\' + self.name)
         os.remove(tmpname)
 
 
